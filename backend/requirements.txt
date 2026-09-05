@@ -21,6 +21,5 @@ langchain
 langchain-openai
 apscheduler
 python-json-logger
-aiosqlite
- aiofiles
+aiofiles
 jinja2
