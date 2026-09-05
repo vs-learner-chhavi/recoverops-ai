@@ -3,14 +3,16 @@ RecoverOps AI — Payment Failure Simulator
 Allows judges/users to trigger simulated failed payments for demo purposes.
 """
 
+import random
 import uuid
-from fastapi import APIRouter, Depends
+
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import get_db
-from app.schemas import SimulatePaymentRequest, SimulatePaymentResponse
-from app.recovery_engine import recovery_engine
 from app.audit_logger import AuditLogger
+from app.database import get_db
+from app.recovery_engine import recovery_engine
+from app.schemas import SimulatePaymentRequest, SimulatePaymentResponse
 
 router = APIRouter(prefix="/simulator", tags=["Simulator"])
 
@@ -72,17 +74,13 @@ async def simulate_failed_payment(
     request: SimulatePaymentRequest,
     db: AsyncSession = Depends(get_db),
 ):
-    """
-    Simulate a failed payment and trigger the full recovery pipeline.
-    This is the main demo endpoint for judges.
-    """
+    """Simulate a failed payment and trigger the full recovery pipeline."""
     template = FAILURE_TEMPLATES.get(
         request.failure_reason,
         FAILURE_TEMPLATES["bank_technical"],
     )
 
     razorpay_payment_id = f"pay_sim_{uuid.uuid4().hex[:14]}"
-
     payment_data = {
         "razorpay_payment_id": razorpay_payment_id,
         "razorpay_order_id": f"order_sim_{uuid.uuid4().hex[:12]}",
@@ -131,23 +129,25 @@ async def simulate_failed_payment(
         razorpay_payment_id=razorpay_payment_id,
         status=status,
         diagnosis=result.get("diagnosis", {}),
-        recommended_intervention=intervention.get("type") or result.get("recommended_intervention") or "none",
+        recommended_intervention=(
+            intervention.get("type")
+            or result.get("recommended_intervention")
+            or "none"
+        ),
         message=nice_message,
     )
 
 
 @router.post("/batch")
 async def simulate_batch(
-    count: int = 10,
+    count: int = Query(default=10, ge=1, le=50),
     db: AsyncSession = Depends(get_db),
 ):
-    """Simulate a batch of failed payments for bulk testing."""
-    import random
-
+    """Simulate a bounded batch of failed payments for bulk testing."""
     results = []
     failure_types = list(FAILURE_TEMPLATES.keys())
 
-    for i in range(min(count, 50)):  # Cap at 50
+    for i in range(count):
         failure_reason = random.choice(failure_types)
         amount = round(random.uniform(100, 50000), 2)
 
@@ -160,7 +160,6 @@ async def simulate_batch(
 
         template = FAILURE_TEMPLATES[failure_reason]
         razorpay_payment_id = f"pay_batch_{uuid.uuid4().hex[:14]}"
-
         payment_data = {
             "razorpay_payment_id": razorpay_payment_id,
             "amount": request.amount,
@@ -196,7 +195,7 @@ async def simulate_batch(
     return {
         "total_simulated": len(results),
         "recovered": recovered,
-        "recovery_rate": f"{recovered/len(results)*100:.1f}%",
+        "recovery_rate": f"{recovered / len(results) * 100:.1f}%",
         "total_amount": f"₹{total_amount:,.2f}",
         "recovered_amount": f"₹{recovered_amount:,.2f}",
         "results": results,
