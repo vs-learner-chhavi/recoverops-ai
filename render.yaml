@@ -1,0 +1,48 @@
+services:
+  - type: web
+    name: recoverops-ai-api
+    runtime: docker
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    dockerContext: ./
+    healthCheckPath: /health
+    envVars:
+      - key: RAZORPAY_KEY_ID
+        sync: false
+      - key: RAZORPAY_KEY_SECRET
+        sync: false
+      - key: RAZORPAY_WEBHOOK_SECRET
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: DATABASE_URL
+        fromDatabase:
+          name: recoverops-db
+          property: connectionString
+      - key: HOST
+        value: 0.0.0.0
+      - key: PORT
+        value: 8000
+      - key: DEBUG
+        value: false
+      - key: CORS_ORIGINS
+        sync: false
+      - key: MAX_RETRIES_PER_PAYMENT
+        value: 3
+      - key: MAX_CONTACT_ATTEMPTS
+        value: 5
+      - key: DND_START_HOUR
+        value: 21
+      - key: DND_END_HOUR
+        value: 9
+      - key: COST_CAP_PERCENTAGE
+        value: 15
+      - key: MIN_CONFIDENCE_THRESHOLD
+        value: 0.65
+
+  - type: pserv
+    name: recoverops-db
+    runtime: postgres
+    plan: free
+    databaseName: recoverops
+    user: recoverops
