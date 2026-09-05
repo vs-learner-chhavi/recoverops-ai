@@ -5,10 +5,12 @@ const nextConfig = {
   reactStrictMode: true,
   outputFileTracingRoot: path.join(__dirname),
   async rewrites() {
+    const backendUrl = process.env.Config || "http://localhost:8000";
+
     return [
       {
-        source: "/api/:path*",
-        destination: "http://localhost:8000/api/:path*",
+        source: "/backend-api/:path*",
+        destination: `${backendUrl.replace(/\/+$/, "")}/api/:path*`,
       },
     ];
   },
