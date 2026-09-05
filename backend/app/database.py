@@ -8,20 +8,22 @@ from sqlalchemy.orm import DeclarativeBase
 from app.config import get_settings
 
 settings = get_settings()
+database_url = settings.normalized_database_url
 
-# Use aiosqlite for local development, asyncpg for production PostgreSQL
-if "sqlite" in settings.database_url:
+# Use aiosqlite for local development, asyncpg for production PostgreSQL.
+if "sqlite" in database_url:
     engine = create_async_engine(
-        settings.database_url,
-        echo=False,  # <-- Set to False to disable raw SQL query spam
+        database_url,
+        echo=False,
         connect_args={"check_same_thread": False},
     )
 else:
     engine = create_async_engine(
-        settings.database_url,
+        database_url,
         echo=False,
-        pool_size=20,
-        max_overflow=10,
+        pool_size=5,
+        max_overflow=5,
+        pool_pre_ping=True,
     )
 
 async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
