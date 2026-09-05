@@ -3,13 +3,14 @@ RecoverOps AI — Webhook Endpoint
 Receives Razorpay webhook events and triggers the recovery pipeline.
 """
 
-from fastapi import APIRouter, Request, HTTPException, Depends
 from typing import Any
 
+from fastapi import APIRouter, Depends, HTTPException, Request
+
+from app.audit_logger import AuditLogger
 from app.database import get_db
 from app.recovery_engine import recovery_engine
 from app.razorpay_client import razorpay_service
-from app.audit_logger import AuditLogger
 
 router = APIRouter(prefix="/webhooks", tags=["Webhooks"])
 
@@ -19,17 +20,17 @@ async def handle_razorpay_webhook(
     request: Request,
     db: Any = Depends(get_db),
 ):
-    """
-    Receive and process Razorpay webhook events.
-    Validates signature, then triggers the recovery engine.
-    """
+    """Receive and process Razorpay webhook events."""
     body = await request.body()
     signature = request.headers.get("X-Razorpay-Signature", "")
 
-    # Verify webhook signature (skip for simulator events)
-    payload = await request.json()
-    is_simulated = payload.get("_simulated", False)
+    try:
+        payload = await request.json()
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="Invalid JSON payload") from exc
 
+    # Simulator events are intentionally unsigned; real Razorpay events must verify.
+    is_simulated = payload.get("_simulated", False)
     if not is_simulated:
         is_valid = razorpay_service.verify_webhook_signature(
             body.decode("utf-8"), signature
@@ -41,25 +42,21 @@ async def handle_razorpay_webhook(
                 error_message="Invalid webhook signature",
             )
             await db.commit()
-            raise HTTPException(
-                status_code=400, detail="Invalid webhook signature"
-            )
+            raise HTTPException(status_code=400, detail="Invalid webhook signature")
 
     event = payload.get("event", "")
 
-        # Only process events we subscribed to in Razorpay dashboard
     supported_events = [
-        "payment.failed",          # Core trigger
-        "payment.captured",        # Retry success confirmation
-        "payment_link.paid",       # Payment link recovery success
-        "payment_link.expired",    # Payment link expired → escalate
-        "payment_link.cancelled",  # Customer cancelled link → follow up
+        "payment.failed",
+        "payment.captured",
+        "payment_link.paid",
+        "payment_link.expired",
+        "payment_link.cancelled",
     ]
 
     if event not in supported_events:
         return {"status": "ignored", "event": event}
 
-    # Route to appropriate handler
     if event == "payment.failed":
         payment_entity = (
             payload.get("payload", {})
@@ -71,7 +68,6 @@ async def handle_razorpay_webhook(
         )
 
     elif event == "payment.captured":
-        # Mark a previously failed payment as recovered
         payment_entity = (
             payload.get("payload", {})
             .get("payment", {})
@@ -82,7 +78,6 @@ async def handle_razorpay_webhook(
         )
 
     elif event == "payment_link.paid":
-        # Payment link was paid — mark associated transaction as recovered
         link_entity = (
             payload.get("payload", {})
             .get("payment_link", {})
@@ -102,7 +97,7 @@ async def handle_razorpay_webhook(
             db=db, payment_link_id=link_entity.get("id", "")
         )
 
-    elif event == "payment_link.cancelled":
+    else:  # payment_link.cancelled
         link_entity = (
             payload.get("payload", {})
             .get("payment_link", {})
@@ -111,3 +106,6 @@ async def handle_razorpay_webhook(
         result = await recovery_engine.handle_cancelled_link(
             db=db, payment_link_id=link_entity.get("id", "")
         )
+
+    await db.commit()
+    return {"status": "processed", "event": event, "result": result}
