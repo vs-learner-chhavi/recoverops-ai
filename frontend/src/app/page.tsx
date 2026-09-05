@@ -71,7 +71,7 @@ export default function Dashboard() {
           </div>
         </section>
 
-        <motion.footer initial={{ opacity:0 }} whileInView={{ opacity:1 }} viewport={{ once:true }} transition={{ duration:.6 }} className="mt-14 border-t border-white/[.06] py-8 text-center text-xs text-zinc-600">Built for Razorpay AI Buildathon 2026 · Powered by XGBoost + SHAP · Fully Explainable</motion.footer>
+        <motion.footer initial={{ opacity:0 }} whileInView={{ opacity:1 }} viewport={{ once:true }} transition={{ duration:.6 }} className="mt-14 py-8 text-center text-xs text-zinc-600"><span>© 2026 RecoverOps AI</span><span className="mx-2 text-zinc-800">·</span><span>Built for the Razorpay AI Buildathon</span></motion.footer>
       </main>
     </div>
   );
