@@ -4,6 +4,7 @@ sqlalchemy
 alembic
 asyncpg
 psycopg2-binary
+aiosqlite
 python-dotenv
 pydantic
 pydantic-settings
