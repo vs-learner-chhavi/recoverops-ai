@@ -40,9 +40,7 @@ services:
       - key: MIN_CONFIDENCE_THRESHOLD
         value: 0.65
 
-  - type: pserv
-    name: recoverops-db
-    runtime: postgres
-    plan: free
+databases:
+  - name: recoverops-db
     databaseName: recoverops
     user: recoverops
