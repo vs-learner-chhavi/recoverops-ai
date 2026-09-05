@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { createElement, type ReactNode } from "react";
-// @ts-expect-error Next.js processes this global stylesheet import at build time.
 import "./globals.css";
 
 export const metadata: Metadata = {
