@@ -1,27 +1,54 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
+const DEFAULT_API_BASE = "http://localhost:8000/api";
+
+function getApiBase(): string {
+  const configured = process.env.NEXT_PUBLIC_API_URL?.trim();
+  if (!configured) return DEFAULT_API_BASE;
+
+  const base = configured.replace(/\/+$/, "");
+  return base.endsWith("/api") ? base : `${base}/api`;
+}
 
 async function fetchAPI<T>(endpoint: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_BASE}${endpoint}`, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...options?.headers,
-    },
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
 
-  if (!res.ok) {
-    throw new Error(`API Error: ${res.status} ${res.statusText}`);
+  try {
+    const res = await fetch(`${getApiBase()}${endpoint}`, {
+      ...options,
+      signal: options?.signal ?? controller.signal,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+      },
+      cache: "no-store",
+    });
+
+    if (!res.ok) {
+      let detail = "";
+      try {
+        const body = await res.json();
+        detail = body?.detail ? `: ${body.detail}` : "";
+      } catch {
+        // Keep the HTTP status as the useful fallback.
+      }
+      throw new Error(`API Error: ${res.status} ${res.statusText}${detail}`);
+    }
+
+    return res.json();
+  } finally {
+    clearTimeout(timeout);
   }
-
-  return res.json();
 }
 
 export const api = {
   getDashboardMetrics: () => fetchAPI<any>("/dashboard/metrics"),
-  getTransactions: (status?: string, limit = 50) =>
-    fetchAPI<any[]>(`/dashboard/transactions?limit=${limit}${status ? `&status=${status}` : ""}`),
+  getTransactions: (status?: string, limit = 50) => {
+    const params = new URLSearchParams({ limit: String(limit) });
+    if (status) params.set("status", status);
+    return fetchAPI<any[]>(`/dashboard/transactions?${params.toString()}`);
+  },
   getTransactionDetail: (id: string) =>
-    fetchAPI<any>(`/dashboard/transactions/${id}`),
+    fetchAPI<any>(`/dashboard/transactions/${encodeURIComponent(id)}`),
   getFailureBreakdown: () => fetchAPI<any[]>("/dashboard/failure-breakdown"),
   getInterventionEffectiveness: () =>
     fetchAPI<any[]>("/dashboard/intervention-effectiveness"),
@@ -31,10 +58,13 @@ export const api = {
       body: JSON.stringify(data),
     }),
   simulateBatch: (count: number) =>
-    fetchAPI<any>(`/simulator/batch?count=${count}`, { method: "POST" }),
-  getAuditLogs: (transactionId?: string, limit = 100) =>
-    fetchAPI<any[]>(
-      `/audit/logs?limit=${limit}${transactionId ? `&transaction_id=${transactionId}` : ""}`
-    ),
+    fetchAPI<any>(`/simulator/batch?count=${encodeURIComponent(count)}`, {
+      method: "POST",
+    }),
+  getAuditLogs: (transactionId?: string, limit = 100) => {
+    const params = new URLSearchParams({ limit: String(limit) });
+    if (transactionId) params.set("transaction_id", transactionId);
+    return fetchAPI<any[]>(`/audit/logs?${params.toString()}`);
+  },
   getAuditStats: () => fetchAPI<any>("/audit/stats"),
 };
