@@ -1,11 +1,9 @@
-const DEFAULT_API_BASE = "http://localhost:8000/api";
+const DEFAULT_API_BASE = "/backend-api";
 
 function getApiBase(): string {
-  const configured = process.env.NEXT_PUBLIC_API_URL?.trim();
-  if (!configured) return DEFAULT_API_BASE;
-
-  const base = configured.replace(/\/+$/, "");
-  return base.endsWith("/api") ? base : `${base}/api`;
+  // Keep the backend URL server-side. `Config` is intentionally NOT prefixed
+  // with NEXT_PUBLIC_, so the value is never exposed to the browser.
+  return DEFAULT_API_BASE;
 }
 
 async function fetchAPI<T>(endpoint: string, options?: RequestInit): Promise<T> {
