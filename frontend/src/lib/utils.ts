@@ -22,7 +22,11 @@ export function formatNumber(num: number): string {
 
 export function formatTime(dateStr: string | null): string {
   if (!dateStr) return "—";
-  return new Date(dateStr).toLocaleString("en-IN", {
+  const normalized = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(dateStr)
+    ? dateStr
+    : `${dateStr}Z`;
+  return new Date(normalized).toLocaleString("en-IN", {
+    timeZone: "Asia/Kolkata",
     day: "2-digit",
     month: "short",
     hour: "2-digit",
