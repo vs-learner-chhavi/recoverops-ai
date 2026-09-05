@@ -3,12 +3,13 @@ RecoverOps AI — Main FastAPI Application
 Autonomous Multi-Tier Revenue Recovery Engine with XAI Diagnostics
 """
 
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
-from app.database import init_db
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
 from app.config import get_settings
+from app.database import init_db
 from app.routes import webhooks_route, dashboard, simulator, audit
 
 settings = get_settings()
@@ -16,16 +17,18 @@ settings = get_settings()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Initialize database and ML models on startup."""
+    """Initialize the database and report runtime configuration on startup."""
     print("🚀 RecoverOps AI starting up...")
     await init_db()
     print("✅ Database initialized")
 
-    # Verify Razorpay connection
-    print(f"🔑 Razorpay Key: {settings.razorpay_key_id[:12]}...")
-    print(f"📊 Policy: max {settings.max_retries_per_payment} retries, "
-          f"DND {settings.dnd_start_hour}:00–{settings.dnd_end_hour}:00, "
-          f"cost cap {settings.cost_cap_percentage}%")
+    key_preview = settings.razorpay_key_id[:12] if settings.razorpay_key_id else "not-set"
+    print(f"🔑 Razorpay Key: {key_preview}...")
+    print(
+        f"📊 Policy: max {settings.max_retries_per_payment} retries, "
+        f"DND {settings.dnd_start_hour}:00–{settings.dnd_end_hour}:00, "
+        f"cost cap {settings.cost_cap_percentage}%"
+    )
 
     yield
 
@@ -42,12 +45,12 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS
+# Production-safe CORS. Configure CORS_ORIGINS as a comma-separated list.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.cors_origin_list,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],
 )
 
