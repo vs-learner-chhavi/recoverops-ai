@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+venv/
+.venv/
+
+# Environment
+.env
+.env.local
+
+# Node
+node_modules/
+.next/
+out/
+
+# IDE
+.vscode/
+.idea/
+
+# Data
+backend/data/synthetic/*.json
+backend/data/synthetic/*.csv
+
+# ML Models
+backend/ml/models/*.joblib
+
+# OS
+.DS_Store
+Thumbs.db
