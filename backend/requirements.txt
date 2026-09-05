@@ -5,8 +5,9 @@ alembic
 asyncpg
 psycopg2-binary
 python-dotenv
-razorpay
 pydantic
+pydantic-settings
+razorpay
 httpx
 websockets
 scikit-learn
@@ -20,5 +21,6 @@ langchain
 langchain-openai
 apscheduler
 python-json-logger
-aiofiles
+aiosqlite
+ aiofiles
 jinja2
